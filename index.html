@@ -2,336 +2,273 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Global Internet Graph</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OBLIVION — SYSTEM ONE</title>
+<meta name="description" content="OBLIVION SYSTEM ONE — an experimental autonomous intelligence system for complex digital environments. Intelligence beyond conversation.">
+<meta property="og:title" content="OBLIVION — SYSTEM ONE">
+<meta property="og:description" content="Intelligence beyond conversation.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>◆</text></svg>">
 <style>
-  :root{color-scheme:dark}
-  html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:ui-monospace,Menlo,Consolas,monospace;color:#c9d3d8}
-  canvas{display:block}
-  .panel{position:fixed;font-size:11px;letter-spacing:.3px;line-height:1.7;pointer-events:none;user-select:none;transition:opacity .4s}
-  #title{top:16px;left:18px}
-  #title .name{font-size:13px;letter-spacing:2px;color:#eef2f4}
-  #title .sub{opacity:.45;font-size:9px;letter-spacing:1px;margin-top:2px}
-  #status{bottom:16px;left:18px;opacity:.75}
-  #status .row span.ok{color:#8fd19e}
-  #status .row span.bad{color:#d18f8f}
-  #status .row span.warn{color:#d1c48f}
-  #perf{bottom:16px;right:18px;text-align:right;opacity:.6}
-  #search{position:fixed;top:16px;right:18px;pointer-events:auto}
-  #search input{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);color:#dfe6e9;padding:6px 10px;font:11px ui-monospace,monospace;width:170px;outline:none}
-  #search input::placeholder{color:#5a6468}
-  #inspector{display:none;position:fixed;bottom:70px;left:18px;background:rgba(8,9,11,.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.1);padding:12px 14px;font-size:11px;max-width:260px;line-height:1.75;pointer-events:auto}
-  #inspector .k{opacity:.5}
-  #inspector .v{color:#fff}
-  #inspector .type{font-size:9px;letter-spacing:1px;opacity:.5;margin-bottom:6px}
-  #legend{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);font-size:9px;opacity:.35;display:flex;gap:16px;letter-spacing:.5px}
-  #legend span{display:flex;align-items:center;gap:5px}
-  #legend i{width:6px;height:6px;border-radius:50%;display:inline-block}
-  #boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;letter-spacing:2px;color:#7a8288;background:#000;z-index:5}
-  #events{display:none;position:fixed;top:60px;right:18px;width:260px;max-height:300px;overflow:auto;background:rgba(8,9,11,.78);border:1px solid rgba(255,255,255,.1);font-size:10px;padding:10px;pointer-events:auto}
-  #events div{opacity:.7;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+:root{
+  --bg:#f2f1ee; --fg:#0a0a0a; --sec:#5a5a56; --border:#0a0a0a;
+  --accent:#c23b1f; --panel:#e8e6e0; --bw:1.5px; --sp:1.5rem; --dur:.35s;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--bg:#0d0d0c; --fg:#eeeee9; --sec:#8a8a84; --border:#eeeee9; --panel:#161615;}
+}
+:root[data-theme="dark"]{--bg:#0d0d0c; --fg:#eeeee9; --sec:#8a8a84; --border:#eeeee9; --panel:#161615;}
+html{scroll-behavior:smooth; scroll-padding-top:env(safe-area-inset-top,0px);}
+body{
+  background:var(--bg); color:var(--fg); font-family:"Neue Haas Grotesk","Helvetica Neue",Helvetica,Arial,sans-serif;
+  overflow-x:hidden; line-height:1.35;
+}
+.mono{font-family:"SF Mono","JetBrains Mono","Courier New",monospace; letter-spacing:.02em;}
+a{color:inherit; text-decoration:none;}
+.wrap{max-width:1400px; margin:0 auto; padding:0 var(--sp);}
+
+/* NAV */
+header{
+  position:sticky; top:0; top:env(safe-area-inset-top,0px); z-index:50; background:color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter:blur(6px); border-bottom:var(--bw) solid var(--border);
+}
+nav{display:flex; align-items:center; justify-content:space-between; padding:1rem var(--sp); font-size:.78rem;}
+.logo{font-weight:700; font-size:.95rem; letter-spacing:.05em;}
+.logo span{color:var(--sec); font-weight:400; margin-left:.4em;}
+.navlinks{display:flex; gap:1.6rem;}
+.navlinks a{text-transform:uppercase; letter-spacing:.06em; opacity:.75; transition:opacity var(--dur);}
+.navlinks a:hover, .navlinks a:focus-visible{opacity:1; outline:none; text-decoration:underline;}
+.status{display:flex; align-items:center; gap:.5em; color:var(--sec);}
+.dot{width:6px; height:6px; border-radius:50%; background:var(--accent); animation:blink 2.6s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.menubtn{display:none; background:none; border:var(--bw) solid var(--border); color:var(--fg); padding:.4em .8em; font:inherit; cursor:pointer;}
+@media(max-width:860px){
+  .navlinks{position:fixed; inset:0; top:52px; background:var(--bg); flex-direction:column; padding:2rem; gap:1.4rem; font-size:1.4rem;
+    transform:translateY(-110%); transition:transform var(--dur) ease;}
+  .navlinks.open{transform:translateY(0);}
+  .menubtn{display:block;}
+  .status{display:none;}
+}
+
+/* HERO */
+.hero{padding:5rem var(--sp) 4rem; border-bottom:var(--bw) solid var(--border); position:relative;}
+.eyebrow{font-size:.72rem; text-transform:uppercase; letter-spacing:.12em; color:var(--sec); margin-bottom:1.6rem; display:flex; gap:2rem; flex-wrap:wrap;}
+h1{font-size:clamp(2.6rem,9vw,7.5rem); line-height:.92; font-weight:800; letter-spacing:-.02em;}
+h1 em{font-style:normal; color:var(--accent);}
+.tagline{max-width:32ch; margin-top:2rem; font-size:1.05rem; color:var(--sec); border-left:var(--bw) solid var(--border); padding-left:1rem;}
+.hero-meta{margin-top:3rem; display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:1px; border:var(--bw) solid var(--border);}
+.hero-meta div{padding:.9rem 1rem; border-right:var(--bw) solid var(--border); font-size:.72rem;}
+.hero-meta div:last-child{border-right:none;}
+.hero-meta b{display:block; font-size:.95rem; margin-top:.3em;}
+
+/* SECTION shared */
+section{padding:4.5rem var(--sp); border-bottom:var(--bw) solid var(--border);}
+.sec-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:2.5rem; gap:1rem; flex-wrap:wrap;}
+.sec-num{font-size:.72rem; color:var(--sec); text-transform:uppercase; letter-spacing:.1em;}
+.sec-title{font-size:clamp(1.8rem,4vw,3rem); font-weight:800; letter-spacing:-.01em;}
+
+/* SYSTEMS chain */
+.chain{display:flex; flex-direction:column; max-width:640px; margin:0 auto;}
+.node{border:var(--bw) solid var(--border); padding:1.2rem 1.4rem; cursor:pointer; transition:background var(--dur);}
+.node:not(:last-child){border-bottom:none;}
+.node:hover, .node:focus-visible, .node.active{background:var(--panel); outline:none;}
+.node-row{display:flex; justify-content:space-between; align-items:center;}
+.node-row span:first-child{font-weight:700; font-size:1.15rem; letter-spacing:.02em;}
+.node-row span:last-child{font-size:.7rem; color:var(--sec);}
+.node-desc{max-height:0; overflow:hidden; transition:max-height var(--dur) ease; font-size:.85rem; color:var(--sec); max-width:48ch;}
+.node.active .node-desc{max-height:6em; margin-top:.6em;}
+.connector{width:1px; height:14px; background:var(--border); margin-left:1.4rem;}
+
+/* MANIFESTO */
+.manifesto p{font-size:clamp(1.4rem,4.5vw,2.6rem); font-weight:700; letter-spacing:-.01em; margin-bottom:2.4rem; max-width:16ch;}
+.manifesto p.sec{color:var(--sec); font-weight:400; font-size:clamp(1rem,2vw,1.3rem); max-width:40ch;}
+
+/* RESEARCH */
+.grid3{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1px; background:var(--border); border:var(--bw) solid var(--border);}
+.card{background:var(--bg); padding:1.6rem; min-height:180px; display:flex; flex-direction:column; justify-content:space-between;}
+.tag{font-size:.65rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); border:var(--bw) solid var(--accent); padding:.15em .5em; align-self:flex-start;}
+.card h3{margin:1rem 0 .5rem; font-size:1.15rem;}
+.card p{font-size:.85rem; color:var(--sec);}
+
+/* NEWS */
+.news-item{display:flex; justify-content:space-between; align-items:center; padding:1.4rem 0; border-bottom:var(--bw) solid var(--border); gap:1rem; flex-wrap:wrap;}
+.news-item:last-child{border-bottom:none;}
+.news-item .meta{font-size:.7rem; color:var(--sec); text-transform:uppercase; letter-spacing:.06em;}
+.news-item h4{font-size:1.2rem; margin-top:.3em;}
+.news-item .more{font-size:.75rem; white-space:nowrap; border-bottom:1px solid currentColor;}
+
+/* TEAM */
+.team-row{display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; padding:1rem 0; border-bottom:var(--bw) solid var(--border); font-size:.85rem;}
+.team-row.head{color:var(--sec); text-transform:uppercase; font-size:.68rem; letter-spacing:.08em;}
+
+/* CONTACT */
+.contact-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1px; background:var(--border); border:var(--bw) solid var(--border);}
+.contact-grid a{background:var(--bg); padding:1.6rem; display:block; transition:background var(--dur);}
+.contact-grid a:hover{background:var(--panel);}
+.contact-grid .label{font-size:.68rem; color:var(--sec); text-transform:uppercase; letter-spacing:.08em;}
+.contact-grid .val{font-size:1.05rem; margin-top:.4em;}
+
+footer{padding:2rem var(--sp); display:flex; justify-content:space-between; flex-wrap:wrap; gap:1rem; font-size:.7rem; color:var(--sec);}
+
+@media(prefers-reduced-motion: reduce){*{animation:none !important; transition:none !important;}}
+::selection{background:var(--accent); color:#fff;}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
 </style>
 </head>
 <body>
-<div id="boot">INITIALIZING GRAPH ENGINE</div>
-<div class="panel" id="title">
-  <div class="name">GLOBAL INTERNET GRAPH</div>
-  <div class="sub">LIVE OBSERVATORY · GITHUB PUBLIC EVENTS + HACKER NEWS · PRESS E FOR EVENT LOG</div>
-</div>
-<div class="panel" id="status">
-  <div class="row">GITHUB EVENTS <span id="h-gh">CONNECTING</span></div>
-  <div class="row">HACKER NEWS <span id="h-hn">CONNECTING</span></div>
-  <div class="row">OBSERVED NODES <span class="v" id="s-nodes">0</span></div>
-  <div class="row">OBSERVED EDGES <span class="v" id="s-edges">0</span></div>
-  <div class="row">LAST EVENT <span id="s-last">—</span></div>
-</div>
-<div class="panel" id="perf">
-  <div id="p-mode">WEBGL2</div>
-  <div id="p-fps">0 FPS</div>
-</div>
-<div id="search"><input id="q" placeholder="search domain / repo / user…" autocomplete="off"></div>
-<div id="inspector"></div>
-<div id="events"></div>
-<div id="legend">
-  <span><i style="background:#8a6fd1"></i>repository</span>
-  <span><i style="background:#7a8ea3"></i>account</span>
-  <span><i style="background:#e3e8ea"></i>domain</span>
-  <span><i style="background:#6fbccf"></i>hacker news</span>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<header>
+  <nav>
+    <div class="logo">OBLIVION<span>SYSTEM / 01</span></div>
+    <div class="navlinks mono" id="navlinks">
+      <a href="#manifesto">Manifesto</a>
+      <a href="#systems">Systems</a>
+      <a href="#research">Research</a>
+      <a href="#news">News</a>
+      <a href="#team">Team</a>
+      <a href="#contact">Contact</a>
+    </div>
+    <div class="status mono"><span class="dot"></span><span id="clock">00:00:00</span></div>
+    <button class="menubtn" id="menubtn" aria-label="Toggle menu" aria-expanded="false">☰</button>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="eyebrow mono">
+      <span>SYSTEM / 01</span><span>STATE — ONLINE</span><span>MODE — AUTONOMOUS</span>
+    </div>
+    <h1>OBLIVION<br>SYSTEM <em>ONE</em></h1>
+    <p class="tagline">An experimental autonomous intelligence system for complex digital environments. Intelligence beyond conversation.</p>
+    <div class="hero-meta mono">
+      <div>VERSION<b>01.0</b></div>
+      <div>SESSION<b id="sess">—</b></div>
+      <div>PROCESS<b>PERCEPTION → EXECUTION</b></div>
+      <div>DISPLAY<b>LOCAL VISUALIZATION</b></div>
+    </div>
+  </section>
+
+  <section id="manifesto" class="manifesto">
+    <div class="sec-head"><span class="sec-num mono">02 / MANIFESTO</span></div>
+    <p>We do not build assistants.</p>
+    <p>We build systems that operate.</p>
+    <p class="sec">Intelligence should not end at a response. It should perceive, reason, remember, plan, and act — continuously, without waiting to be asked twice.</p>
+  </section>
+
+  <section id="systems">
+    <div class="sec-head">
+      <span class="sec-num mono">03 / SYSTEMS</span>
+      <span class="sec-title">Architecture</span>
+    </div>
+    <div class="chain" id="chain">
+      <div class="node" tabindex="0" data-desc="Ingests signal from its operating environment — structured and unstructured.">
+        <div class="node-row"><span>PERCEPTION</span><span class="mono">01</span></div>
+        <div class="node-desc">Ingests signal from its operating environment — structured and unstructured.</div>
+      </div>
+      <div class="connector"></div>
+      <div class="node" tabindex="0">
+        <div class="node-row"><span>REASONING</span><span class="mono">02</span></div>
+        <div class="node-desc">Resolves ambiguity and forms an internal model of the task at hand.</div>
+      </div>
+      <div class="connector"></div>
+      <div class="node" tabindex="0">
+        <div class="node-row"><span>MEMORY</span><span class="mono">03</span></div>
+        <div class="node-desc">Retains state across time, sessions, and context boundaries.</div>
+      </div>
+      <div class="connector"></div>
+      <div class="node" tabindex="0">
+        <div class="node-row"><span>PLANNING</span><span class="mono">04</span></div>
+        <div class="node-desc">Sequences action toward an objective under changing constraints.</div>
+      </div>
+      <div class="connector"></div>
+      <div class="node" tabindex="0">
+        <div class="node-row"><span>EXECUTION</span><span class="mono">05</span></div>
+        <div class="node-desc">Acts on the environment directly, then observes the result.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="research">
+    <div class="sec-head">
+      <span class="sec-num mono">04 / RESEARCH</span>
+      <span class="sec-title">Working notes</span>
+    </div>
+    <div class="grid3">
+      <div class="card"><span class="tag">Experimental</span><h3>Autonomous Systems</h3><p>Illustrative model of agent behavior under sustained operation.</p></div>
+      <div class="card"><span class="tag">Simulated</span><h3>Agent Architectures</h3><p>Structural comparisons across planning-execution loop designs.</p></div>
+      <div class="card"><span class="tag">Illustrative</span><h3>Computational Memory</h3><p>Notes on state retention across long-horizon tasks.</p></div>
+    </div>
+  </section>
+
+  <section id="news">
+    <div class="sec-head">
+      <span class="sec-num mono">05 / NEWS</span>
+      <span class="sec-title">Bulletins</span>
+    </div>
+    <div class="news-item">
+      <div><div class="meta mono">SEP 27, 2026 — OBLIVION SYSTEMS</div><h4>System One / Initial Publication</h4></div>
+      <div class="more mono">READ MORE →</div>
+    </div>
+    <div class="news-item">
+      <div><div class="meta mono">SEP 14, 2026 — RESEARCH NOTE</div><h4>Autonomous Web Systems</h4></div>
+      <div class="more mono">READ MORE →</div>
+    </div>
+  </section>
+
+  <section id="team">
+    <div class="sec-head">
+      <span class="sec-num mono">06 / TEAM</span>
+      <span class="sec-title">Core</span>
+    </div>
+    <div class="team-row head"><span>Name</span><span>Role</span><span>Area</span></div>
+    <div class="team-row"><span>Squrpion</span><span>Lead / Founder</span><span>Systems, Research</span></div>
+  </section>
+
+  <section id="contact" style="border-bottom:none;">
+    <div class="sec-head">
+      <span class="sec-num mono">07 / CONTACT</span>
+      <span class="sec-title">Reach the system</span>
+    </div>
+    <div class="contact-grid mono">
+      <a href="#"><div class="label">General</div><div class="val">general@oblivion.systems</div></a>
+      <a href="#"><div class="label">Research</div><div class="val">research@oblivion.systems</div></a>
+      <a href="#"><div class="label">Partnerships</div><div class="val">partners@oblivion.systems</div></a>
+    </div>
+  </section>
+</main>
+
+<footer class="mono">
+  <span>OBLIVION SYSTEMS © 2026</span>
+  <span id="localtime">LOCAL TIME —</span>
+</footer>
+
 <script>
 (function(){
-"use strict";
-const REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const CONFIG = { maxNodes:6000, maxEdges:14000, ghPoll:5000, hnPoll:20000, eventWindow:3000 };
-const TYPE_COLOR = { ACCOUNT:[0.48,0.56,0.64], REPOSITORY:[0.54,0.44,0.82], DOMAIN:[0.89,0.91,0.92], SOURCE:[0.44,0.74,0.81] };
-const TYPE_RADIUS_BIAS = { ACCOUNT:70, REPOSITORY:70, DOMAIN:180, SOURCE:10 };
+  var menubtn=document.getElementById('menubtn'), nav=document.getElementById('navlinks');
+  menubtn.addEventListener('click',function(){
+    var open=nav.classList.toggle('open');
+    menubtn.setAttribute('aria-expanded',open);
+  });
+  nav.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){nav.classList.remove('open');});});
 
-// ---------- deterministic hashing / layout ----------
-function hash32(str){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
-function rand01(seed){ seed=(seed^(seed>>>15))>>>0; seed=Math.imul(seed,2246822519)>>>0; seed=(seed^(seed>>>13))>>>0; seed=Math.imul(seed,3266489917)>>>0; return ((seed^(seed>>>16))>>>0)/4294967296; }
-function positionFor(id,type){
-  const h=hash32(id);
-  const a=rand01(h), b=rand01(h+101), c=rand01(h+202);
-  const bias=TYPE_RADIUS_BIAS[type]||100;
-  const r=bias+c*160;
-  const theta=a*Math.PI*2, phi=Math.acos(2*b-1);
-  return [r*Math.sin(phi)*Math.cos(theta), r*Math.sin(phi)*Math.sin(theta), r*Math.cos(phi)];
-}
+  document.querySelectorAll('.node').forEach(function(n){
+    function toggle(){document.querySelectorAll('.node').forEach(function(o){if(o!==n)o.classList.remove('active');}); n.classList.toggle('active');}
+    n.addEventListener('click',toggle);
+    n.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}});
+  });
 
-// ---------- renderer ----------
-let renderer;
-try{ renderer=new THREE.WebGLRenderer({antialias:true}); }
-catch(e){ document.getElementById('boot').textContent='WEBGL UNSUPPORTED IN THIS BROWSER'; return; }
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-renderer.setSize(innerWidth,innerHeight);
-document.body.appendChild(renderer.domElement);
-const scene=new THREE.Scene();
-scene.fog=new THREE.FogExp2(0x000000,0.0011);
-const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,0.1,5000);
-camera.position.set(0,120,520);
-const controls=new THREE.OrbitControls(camera,renderer.domElement);
-controls.enableDamping=!REDUCE; controls.dampingFactor=0.08; controls.rotateSpeed=0.4; controls.zoomSpeed=0.6;
-addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
-
-// sprite texture (soft glow point)
-const spriteCanvas=document.createElement('canvas'); spriteCanvas.width=spriteCanvas.height=64;
-const sctx=spriteCanvas.getContext('2d');
-const g=sctx.createRadialGradient(32,32,0,32,32,32);
-g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.4,'rgba(255,255,255,.55)'); g.addColorStop(1,'rgba(255,255,255,0)');
-sctx.fillStyle=g; sctx.fillRect(0,0,64,64);
-const spriteTex=new THREE.CanvasTexture(spriteCanvas);
-
-// ---------- graph store (typed arrays) ----------
-const N=CONFIG.maxNodes, E=CONFIG.maxEdges;
-const positions=new Float32Array(N*3), colors=new Float32Array(N*3), sizes=new Float32Array(N*3===0?N:N);
-const edgePos=new Float32Array(E*2*3), edgeCol=new Float32Array(E*2*3);
-let nodeCount=0, edgeCount=0;
-const idToIndex=new Map(); const indexToId=[];
-const nodeMeta=new Map(); // id -> {type,label,source,firstSeen,lastSeen}
-const edgeKeys=new Set();
-const active=new Map(); // index -> lastEventTime (pulse decay)
-
-const nodeGeo=new THREE.BufferGeometry();
-nodeGeo.setAttribute('position',new THREE.BufferAttribute(positions,3).setUsage(THREE.DynamicDrawUsage));
-nodeGeo.setAttribute('color',new THREE.BufferAttribute(colors,3).setUsage(THREE.DynamicDrawUsage));
-nodeGeo.setAttribute('size',new THREE.BufferAttribute(sizes,1).setUsage(THREE.DynamicDrawUsage));
-nodeGeo.setDrawRange(0,0);
-const nodeMat=new THREE.PointsMaterial({size:6,map:spriteTex,vertexColors:true,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,sizeAttenuation:true});
-const points=new THREE.Points(nodeGeo,nodeMat); scene.add(points);
-
-const edgeGeo=new THREE.BufferGeometry();
-edgeGeo.setAttribute('position',new THREE.BufferAttribute(edgePos,3).setUsage(THREE.DynamicDrawUsage));
-edgeGeo.setAttribute('color',new THREE.BufferAttribute(edgeCol,3).setUsage(THREE.DynamicDrawUsage));
-edgeGeo.setDrawRange(0,0);
-const edgeMat=new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0.16});
-const lines=new THREE.LineSegments(edgeGeo,edgeMat); scene.add(lines);
-
-function addNode(id,type,label,source){
-  const now=performance.now();
-  if(idToIndex.has(id)){
-    const i=idToIndex.get(id);
-    const m=nodeMeta.get(id); m.lastSeen=Date.now();
-    active.set(i,now);
-    return i;
+  function pad(n){return n<10?'0'+n:n;}
+  function tick(){
+    var d=new Date();
+    var t=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+    var c=document.getElementById('clock'); if(c) c.textContent=t;
+    var lt=document.getElementById('localtime'); if(lt) lt.textContent='LOCAL TIME — '+t;
   }
-  if(nodeCount>=N) return -1;
-  const i=nodeCount++;
-  idToIndex.set(id,i); indexToId[i]=id;
-  const [x,y,z]=positionFor(id,type);
-  positions[i*3]=x; positions[i*3+1]=y; positions[i*3+2]=z;
-  const c=TYPE_COLOR[type]||[0.6,0.6,0.6];
-  colors[i*3]=c[0]; colors[i*3+1]=c[1]; colors[i*3+2]=c[2];
-  sizes[i]= type==='DOMAIN'?5: type==='SOURCE'?9:6;
-  nodeMeta.set(id,{type,label,source,firstSeen:Date.now(),lastSeen:Date.now()});
-  active.set(i,now);
-  nodeGeo.attributes.position.needsUpdate=true;
-  nodeGeo.attributes.color.needsUpdate=true;
-  nodeGeo.setDrawRange(0,nodeCount);
-  return i;
-}
-function addEdge(aId,bId,type,source){
-  const key=aId+'>'+bId;
-  if(edgeKeys.has(key)) return;
-  if(edgeCount>=E) return;
-  const ai=idToIndex.get(aId), bi=idToIndex.get(bId);
-  if(ai==null||bi==null) return;
-  edgeKeys.add(key);
-  const i=edgeCount++;
-  edgePos[i*6]=positions[ai*3]; edgePos[i*6+1]=positions[ai*3+1]; edgePos[i*6+2]=positions[ai*3+2];
-  edgePos[i*6+3]=positions[bi*3]; edgePos[i*6+4]=positions[bi*3+1]; edgePos[i*6+5]=positions[bi*3+2];
-  const c=TYPE_COLOR[nodeMeta.get(bId).type]||[0.5,0.5,0.5];
-  for(let k=0;k<2;k++){ edgeCol[i*6+k*3]=c[0]; edgeCol[i*6+k*3+1]=c[1]; edgeCol[i*6+k*3+2]=c[2]; }
-  edgeGeo.attributes.position.needsUpdate=true;
-  edgeGeo.attributes.color.needsUpdate=true;
-  edgeGeo.setDrawRange(0,edgeCount*2);
-}
-
-// ---------- live event log ----------
-const evLog=[];
-function logEvent(src,kind,detail){
-  evLog.unshift({t:new Date(),src,kind,detail});
-  if(evLog.length>60) evLog.pop();
-  document.getElementById('s-last').textContent='0s';
-  lastEventAt=performance.now();
-  renderEventLog();
-}
-function renderEventLog(){
-  const el=document.getElementById('events'); if(el.style.display==='none') return;
-  el.innerHTML=evLog.slice(0,40).map(e=>`<div>${e.t.toLocaleTimeString()} · ${e.src} · ${e.kind} <span style="color:#8fa">${e.detail}</span></div>`).join('');
-}
-let lastEventAt=performance.now();
-
-// ---------- source health ----------
-const health={github:'CONNECTING',hn:'CONNECTING'};
-function paintHealth(){
-  const map={ONLINE:'ok',RATE_LIMITED:'warn',OFFLINE:'bad',CONNECTING:'warn'};
-  document.getElementById('h-gh').className=map[health.github]; document.getElementById('h-gh').textContent=health.github;
-  document.getElementById('h-hn').className=map[health.hn]; document.getElementById('h-hn').textContent=health.hn;
-}
-
-// ---------- GitHub public events ----------
-let ghEtag=null;
-async function pollGithub(){
-  try{
-    const headers={}; if(ghEtag) headers['If-None-Match']=ghEtag;
-    const res=await fetch('https://api.github.com/events',{headers});
-    if(res.status===304){ health.github='ONLINE'; }
-    else if(res.status===403){ health.github='RATE_LIMITED'; }
-    else if(res.ok){
-      ghEtag=res.headers.get('ETag');
-      const poll=parseInt(res.headers.get('X-Poll-Interval')||'5',10)*1000;
-      const data=await res.json();
-      data.forEach(ev=>{
-        if(!['PushEvent','WatchEvent','ForkEvent','CreateEvent','IssuesEvent','PullRequestEvent','ReleaseEvent'].includes(ev.type)) return;
-        if(!ev.actor||!ev.repo) return;
-        const actorId='gh:a:'+ev.actor.login, repoId='gh:r:'+ev.repo.name;
-        addNode(actorId,'ACCOUNT',ev.actor.login,'GitHub Public Events');
-        addNode(repoId,'REPOSITORY',ev.repo.name,'GitHub Public Events');
-        addEdge(actorId,repoId,ev.type,'GitHub Public Events');
-        logEvent('GitHub',ev.type,ev.repo.name);
-      });
-      health.github='ONLINE';
-      setTimeout(pollGithub,Math.max(poll,CONFIG.ghPoll));
-      paintHealth(); return;
-    } else { health.github='OFFLINE'; }
-  }catch(e){ health.github='OFFLINE'; }
-  paintHealth();
-  setTimeout(pollGithub,CONFIG.ghPoll);
-}
-
-// ---------- Hacker News ----------
-const seenHN=new Set();
-async function pollHN(){
-  try{
-    addNode('hn','SOURCE','Hacker News','Hacker News API');
-    const res=await fetch('https://hacker-news.firebaseio.com/v0/newstories.json');
-    const ids=await res.json();
-    const fresh=ids.slice(0,15).filter(id=>!seenHN.has(id));
-    for(const id of fresh){
-      seenHN.add(id);
-      try{
-        const r=await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
-        const item=await r.json();
-        if(item && item.url){
-          const host=new URL(item.url).hostname.replace(/^www\./,'');
-          const domId='dom:'+host;
-          addNode(domId,'DOMAIN',host,'Hacker News API');
-          addEdge('hn',domId,'MENTIONS','Hacker News API');
-          logEvent('Hacker News','story → '+host,item.title? item.title.slice(0,28):'');
-        }
-      }catch(_){}
-    }
-    health.hn='ONLINE';
-  }catch(e){ health.hn='OFFLINE'; }
-  paintHealth();
-  setTimeout(pollHN,CONFIG.hnPoll);
-}
-
-// ---------- picking / inspector ----------
-const raycaster=new THREE.Raycaster(); raycaster.params.Points.threshold=6;
-const mouse=new THREE.Vector2();
-let selected=-1;
-renderer.domElement.addEventListener('click',(ev)=>{
-  mouse.x=(ev.clientX/innerWidth)*2-1; mouse.y=-(ev.clientY/innerHeight)*2+1;
-  raycaster.setFromCamera(mouse,camera);
-  const hit=raycaster.intersectObject(points);
-  if(hit.length){ selected=hit[0].index; showInspector(selected); }
-});
-function degreeOf(id){
-  let d=0; edgeKeys.forEach(k=>{ if(k.startsWith(id+'>')||k.endsWith('>'+id)) d++; }); return d;
-}
-function showInspector(i){
-  const id=indexToId[i]; const m=nodeMeta.get(id); if(!m) return;
-  const el=document.getElementById('inspector');
-  el.style.display='block';
-  el.innerHTML=`<div class="type">${m.type}</div>
-    <div class="row"><span class="k">entity</span> <span class="v">${m.label}</span></div>
-    <div class="row"><span class="k">source</span> <span class="v">${m.source}</span></div>
-    <div class="row"><span class="k">first seen</span> <span class="v">${new Date(m.firstSeen).toLocaleTimeString()}</span></div>
-    <div class="row"><span class="k">last seen</span> <span class="v">${new Date(m.lastSeen).toLocaleTimeString()}</span></div>
-    <div class="row"><span class="k">degree</span> <span class="v">${degreeOf(id)}</span></div>`;
-}
-
-// ---------- search ----------
-document.getElementById('q').addEventListener('keydown',(e)=>{
-  if(e.key!=='Enter') return;
-  const q=e.target.value.trim().toLowerCase(); if(!q) return;
-  for(const [id,m] of nodeMeta){ if(m.label.toLowerCase().includes(q)){
-    const i=idToIndex.get(id);
-    const target=new THREE.Vector3(positions[i*3],positions[i*3+1],positions[i*3+2]);
-    controls.target.copy(target);
-    const dir=camera.position.clone().sub(target).normalize().multiplyScalar(80);
-    camera.position.copy(target.clone().add(dir));
-    showInspector(i); break;
-  } }
-});
-
-// ---------- keys ----------
-addEventListener('keydown',(e)=>{
-  if(e.key==='r'||e.key==='R'){ camera.position.set(0,120,520); controls.target.set(0,0,0); }
-  if(e.key==='Escape'){ selected=-1; document.getElementById('inspector').style.display='none'; }
-  if(e.key==='e'||e.key==='E'){ const el=document.getElementById('events'); el.style.display=el.style.display==='none'?'block':'none'; renderEventLog(); }
-});
-
-// ---------- perf + pulse loop ----------
-let lastT=performance.now(), frames=0, fpsAcc=0;
-function animate(){
-  requestAnimationFrame(animate);
-  const now=performance.now(); const dt=now-lastT; lastT=now; frames++; fpsAcc+=dt;
-  if(fpsAcc>500){ document.getElementById('p-fps').textContent=Math.round(1000/(fpsAcc/frames))+' FPS'; frames=0; fpsAcc=0; }
-  document.getElementById('s-nodes').textContent=nodeCount;
-  document.getElementById('s-edges').textContent=edgeCount;
-  const secs=Math.round((now-lastEventAt)/1000);
-  document.getElementById('s-last').textContent=secs+'s';
-
-  if(!REDUCE){
-    for(const [i,t] of active){
-      const age=now-t;
-      if(age>CONFIG.eventWindow){ active.delete(i); sizes[i]= (nodeMeta.get(indexToId[i])||{}).type==='DOMAIN'?5:6; continue; }
-      const decay=1-age/CONFIG.eventWindow;
-      sizes[i]=6+decay*10;
-    }
-    nodeGeo.attributes.size.needsUpdate=true;
-  }
-  controls.update();
-  renderer.render(scene,camera);
-}
-
-// ---------- boot ----------
-function boot(){
-  document.getElementById('boot').textContent='LOADING GRAPH';
-  paintHealth();
-  if(location.protocol==='file:'){
-    logEvent('System','static file context','use an HTTPS host for full reliability');
-  }
-  pollGithub(); pollHN();
-  setTimeout(()=>{ document.getElementById('boot').style.opacity='0'; setTimeout(()=>document.getElementById('boot').remove(),500); },1200);
-  animate();
-}
-boot();
+  tick(); setInterval(tick,1000);
+  var sess=document.getElementById('sess');
+  if(sess) sess.textContent='#'+Math.random().toString(16).slice(2,8).toUpperCase();
 })();
 </script>
 </body>
