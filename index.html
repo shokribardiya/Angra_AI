@@ -531,3 +531,137 @@ BOOT.init();[MED,NAV,SCR,HERO,GRAPH,LOOPM,ARCHM,UI,HT,ART,SYS,CUR,DL].forEach(ru
 <noscript><p style="padding:24px" class="m">ANGRA — OBLIVION integration layer for compatible AI models in LM Studio and Bionic. JavaScript is required for the download cards; the files are in /downloads/angra-lmstudio/ and /downloads/angra-bionic/.</p></noscript>
 </body>
 </html>
+<!-- ANGRA V1 — Liquid Glass Floating Download Button -->
+<style>
+  .angra-v1-download {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 99999;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 12px 18px;
+    border-radius: 999px;
+
+    color: #fff;
+    text-decoration: none;
+    font: 600 13px/1 -apple-system, BlinkMacSystemFont, "SF Pro Display",
+          "SF Pro Text", Inter, sans-serif;
+    letter-spacing: .02em;
+
+    background:
+      linear-gradient(
+        135deg,
+        rgba(255,255,255,.20),
+        rgba(255,255,255,.07)
+      );
+
+    border: 1px solid rgba(255,255,255,.24);
+
+    box-shadow:
+      0 8px 32px rgba(0,0,0,.28),
+      inset 0 1px 0 rgba(255,255,255,.28),
+      inset 0 -1px 0 rgba(255,255,255,.06);
+
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+
+    transition:
+      transform .35s cubic-bezier(.2,.8,.2,1),
+      box-shadow .35s ease,
+      background .35s ease;
+  }
+
+  .angra-v1-download::before {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    border-radius: inherit;
+    pointer-events: none;
+
+    background: linear-gradient(
+      120deg,
+      rgba(255,255,255,.16),
+      transparent 35%,
+      transparent 65%,
+      rgba(255,255,255,.08)
+    );
+
+    opacity: .7;
+  }
+
+  .angra-v1-download:hover {
+    transform: translateY(-3px) scale(1.025);
+
+    background:
+      linear-gradient(
+        135deg,
+        rgba(255,255,255,.27),
+        rgba(255,255,255,.10)
+      );
+
+    box-shadow:
+      0 14px 42px rgba(0,0,0,.36),
+      0 0 0 1px rgba(255,255,255,.08),
+      inset 0 1px 0 rgba(255,255,255,.35);
+  }
+
+  .angra-v1-download:active {
+    transform: translateY(0) scale(.97);
+  }
+
+  .angra-v1-download .angra-icon {
+    width: 17px;
+    height: 17px;
+    display: block;
+    flex: 0 0 auto;
+  }
+
+  .angra-v1-download .angra-label {
+    position: relative;
+    z-index: 1;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 600px) {
+    .angra-v1-download {
+      right: 16px;
+      bottom: 16px;
+      padding: 11px 15px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .angra-v1-download {
+      transition: none;
+    }
+  }
+</style>
+
+<a
+  class="angra-v1-download"
+  href="https://github.com/shokribardiya/Angra-AI-Model-Collaboration-Bridge-.-Bardiya-Shokri-"
+  target="_blank"
+  rel="noopener noreferrer"
+  aria-label="Download ANGRA V1"
+>
+  <svg
+    class="angra-icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M12 3v12"/>
+    <path d="m7 10 5 5 5-5"/>
+    <path d="M5 21h14"/>
+  </svg>
+
+  <span class="angra-label">ANGRA V1</span>
+</a>
