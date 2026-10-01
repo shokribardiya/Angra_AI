@@ -659,3 +659,795 @@ BOOT.init();[MED,NAV,SCR,HERO,GRAPH,LOOPM,ARCHM,UI,HT,ART,SYS,CUR,DL].forEach(ru
 
   <span class="angra-label">ANGRA V1</span>
 </a>
+<script>
+/* Living Robot Engine: a tiny creature that lives inside the page.
+   Self-contained · Shadow DOM · vanilla JS · no network · no data collection */
+(function () {
+  'use strict';
+  try {
+    var W = window, D = document;
+    if (W.__LRB__ || !Element.prototype.attachShadow) return;
+    if (D.body) boot(); else D.addEventListener('DOMContentLoaded', boot, { once: true });
+
+    function boot() {
+      if (W.__LRB__) return;
+      var OFF = [];
+      function safe(fn) { return function () { try { return fn.apply(this, arguments); } catch (e) {} }; }
+      function on(t, ev, fn, o) { var f = safe(fn); t.addEventListener(ev, f, o); OFF.push(function () { t.removeEventListener(ev, f, o); }); }
+      function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+      function rand(a, b) { return a + Math.random() * (b - a); }
+      function chance(p) { return Math.random() < p; }
+      function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+      function now() { return performance.now(); }
+      function mq(q) { return W.matchMedia ? W.matchMedia(q) : null; }
+
+      /* ───────────── environment ───────────── */
+      var mqRM = mq('(prefers-reduced-motion: reduce)'), mqT = mq('(hover: none), (pointer: coarse)');
+      var RM = !!(mqRM && mqRM.matches), TOUCH = !!(mqT && mqT.matches), INT = TOUCH ? 0.65 : 1;
+      var ASPECT = 1180 / 1735;
+
+      /* ───────────── DOM (Shadow DOM, isolated) ───────────── */
+      var host = D.createElement('div');
+      host.setAttribute('data-lrb', ''); host.setAttribute('aria-hidden', 'true');
+      host.style.cssText = 'all:initial!important;display:block!important;position:fixed!important;left:0!important;top:0!important;width:100%!important;height:100%!important;pointer-events:none!important;overflow:hidden!important;z-index:2147483000!important;contain:layout paint style!important;';
+      var root = host.attachShadow({ mode: 'closed' });
+      var CSS = [
+        ':host{all:initial}',
+        '.probe{position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}',
+        '.rb{position:absolute;left:0;top:0;width:var(--w,56px);height:var(--h,38px);opacity:0;transition:opacity .5s ease;will-change:transform,opacity;pointer-events:none;-webkit-user-select:none;user-select:none;contain:layout style}',
+        '.rb.on{opacity:1}.rb.fade{opacity:0;transition:opacity .35s ease}',
+        '.tilt,.act,.flt,svg{position:absolute;left:0;top:0;width:100%;height:100%;display:block;overflow:visible}',
+        '.tilt,.act,.flt{transform-origin:50% 100%}',
+        '.sh{position:absolute;left:10%;right:10%;bottom:-16%;height:15%;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.26),rgba(0,0,0,0));opacity:.55;transition:opacity .4s}',
+        '.rb.mv .sh{opacity:.3}',
+        '.flt{animation:lrbf 4.8s ease-in-out infinite}',
+        '@keyframes lrbf{0%,100%{transform:translateY(0)}50%{transform:translateY(-7%)}}',
+        '.rb.calm .flt{animation-duration:7.5s}.rb.mv .flt{animation-duration:2.4s}',
+        '.rb.sleep .flt{animation:lrbb 5.5s ease-in-out infinite}',
+        '@keyframes lrbb{0%,100%{transform:scale(1,1)}50%{transform:scale(1.015,1.035)}}',
+        '.eye{transform-box:fill-box;transform-origin:50% 50%;transition:transform .12s ease}',
+        '.rb.e-wide .eye{transform:scale(1.2)}.rb.e-half .eye{transform:scaleY(.5)}.rb.e-closed .eye{transform:scaleY(.07)}.rb.blink .eye{transform:scaleY(.07)}',
+        '.lg{transform-box:fill-box;transform-origin:50% 0}',
+        '.rb.mv .lg1,.rb.mv .lg3{animation:lrbs .36s ease-in-out infinite}',
+        '.rb.mv .lg2,.rb.mv .lg4{animation:lrbs .36s ease-in-out infinite -.18s}',
+        '@keyframes lrbs{0%,100%{transform:translateY(0)}50%{transform:translateY(-9%)}}',
+        '.arm{transform-box:fill-box}.arm.l{transform-origin:100% 50%}.arm.r{transform-origin:0 50%}',
+        '.rb.ex .arm.l{animation:lrbal .32s ease-in-out infinite}.rb.ex .arm.r{animation:lrbar .32s ease-in-out infinite}',
+        '@keyframes lrbal{0%,100%{transform:rotate(0)}50%{transform:rotate(14deg)}}',
+        '@keyframes lrbar{0%,100%{transform:rotate(0)}50%{transform:rotate(-14deg)}}',
+        '.act.hop{animation:lrbhop .55s cubic-bezier(.3,.7,.4,1)}',
+        '@keyframes lrbhop{0%{transform:scale(1.06,.94)}30%{transform:translateY(-34%) scale(.96,1.05)}60%{transform:scale(1.07,.93)}100%{transform:none}}',
+        '.act.jit{animation:lrbjit .42s steps(2,end) infinite}',
+        '@keyframes lrbjit{0%{transform:none}25%{transform:translate(2.2%,-1%)}50%{transform:translate(-1.6%,.6%)}75%{transform:translate(1%,1.2%)}100%{transform:none}}',
+        '.act.stl{animation:lrbstl .45s ease-out}',
+        '@keyframes lrbstl{0%{transform:none}25%{transform:translateY(-12%) scale(1.1,.95)}100%{transform:none}}',
+        '.act.str{animation:lrbstr 1s ease-in-out}',
+        '@keyframes lrbstr{0%{transform:none}30%{transform:scale(.96,1.12)}60%{transform:scale(1.03,.96)}100%{transform:none}}',
+        '.z{position:absolute;right:-6%;top:-34%;font:700 11px system-ui,sans-serif;color:#D97757;opacity:0}',
+        '.rb.sleep .z{animation:lrbz 3.2s ease-in-out infinite}',
+        '@keyframes lrbz{0%{opacity:0;transform:translate(0,6px) scale(.8)}30%{opacity:.9}100%{opacity:0;transform:translate(8px,-14px) scale(1.1)}}',
+        '.bub{position:absolute;left:0;top:0;white-space:nowrap;direction:rtl;unicode-bidi:plaintext;text-align:center;font:500 12.5px/1.25 system-ui,-apple-system,"Segoe UI",Tahoma,"Noto Sans Arabic","Noto Naskh Arabic",sans-serif;color:#f6efe9;background:rgba(26,23,22,.92);padding:5px 10px;border-radius:11px;box-shadow:0 4px 14px rgba(0,0,0,.22);opacity:0;transform:translateY(4px) scale(.92);transition:opacity .22s ease,transform .26s cubic-bezier(.3,1.4,.5,1)}',
+        '.bub.show{opacity:1;transform:none}',
+        '.tail{position:absolute;left:var(--tx,50%);width:8px;height:8px;background:inherit;border-radius:2px;transform:translateX(-50%) rotate(45deg)}',
+        '.bub.up .tail{bottom:-3px}.bub.dn .tail{top:-3px}',
+        '.rb.rm *{animation:none!important;transition:none!important}',
+        '.rb.rm .bub{transition:opacity .25s ease!important}.rb.rm .bub.show{transform:none}'
+      ].join('');
+      root.innerHTML = '<style>' + CSS + '</style><div class="probe"></div>' +
+        '<div class="rb"><div class="bub"><span class="bt"></span><i class="tail"></i></div><div class="sh"></div><div class="z">z</div>' +
+        '<div class="tilt"><div class="act"><div class="flt">' +
+        '<svg viewBox="10 10 1735 1180" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" fill="#D97757">' +
+        '<g class="lg lg1"><rect x="300" y="860" width="140" height="330"/></g><g class="lg lg2"><rect x="595" y="860" width="140" height="330"/></g>' +
+        '<g class="lg lg3"><rect x="1025" y="860" width="140" height="330"/></g><g class="lg lg4"><rect x="1320" y="860" width="160" height="330"/></g>' +
+        '<g class="arm l"><rect x="10" y="300" width="300" height="285"/></g><g class="arm r"><rect x="1470" y="300" width="275" height="285"/></g>' +
+        '<rect x="300" y="10" width="1180" height="870"/>' +
+        '<g class="gz"><g class="eye"><rect fill="#000" x="450" y="143" width="148" height="149"/></g><g class="eye"><rect fill="#000" x="1172" y="143" width="148" height="149"/></g></g>' +
+        '</svg></div></div></div></div>';
+      var rb = root.querySelector('.rb'), tilt = root.querySelector('.tilt'), actEl = root.querySelector('.act'),
+        gz = root.querySelector('.gz'), bub = root.querySelector('.bub'), bt = root.querySelector('.bt'), probe = root.querySelector('.probe');
+      var mountEl = D.body;
+      try { var bcs = getComputedStyle(D.body); if ((bcs.transform && bcs.transform !== 'none') || (bcs.filter && bcs.filter !== 'none') || (bcs.perspective && bcs.perspective !== 'none')) mountEl = D.documentElement; } catch (e) {}
+      mountEl.appendChild(host);
+
+      /* ───────────── data ───────────── */
+      var PH = {
+        greet: ['هی... من اینجام 👀', 'دیدمت.'],
+        presence: ['من هنوز اینجام.', 'من حواسم هست.', 'اینجا امنه.', 'من فقط تماشا می‌کنم.', 'خب... ادامه بده.'],
+        observe: ['دارم بررسی می‌کنم.', 'بذار نگاه کنم.', 'هوم...', 'آهان.', 'جالبه.'],
+        curious: ['یکی اینجا کنجکاوه.', 'چی پیدا کردی؟', 'اوه.', 'جالبه.', 'این یکی جالب بود.'],
+        fast: ['آروم‌تر برو 😶', 'آروم‌تر... دارم نگاه می‌کنم.', 'صبر کن...'],
+        stop: ['یک لحظه...', 'بذار نگاه کنم.', 'آهان.', 'دیدمت.'],
+        reverse: ['کجا رفتی؟', 'هوم...', 'باشه... فهمیدم.'],
+        back: ['دوباره برگشتی.', 'کجا رفتی؟', 'من هنوز اینجام.'],
+        section: ['این قسمت رو دوست دارم.', 'جالبه.', 'اوه.', 'بذار نگاه کنم.'],
+        pointer: ['دیدمت.', 'این حرکتت جالب بود.', 'من فقط تماشا می‌کنم.'],
+        click: ['اوکی.', 'باشه... فهمیدم.', 'خب، بریم.'],
+        wake: ['هوم...', 'اوه.', 'من هنوز اینجام.'],
+        play: ['خب، بریم.', 'این حرکتت جالب بود.', 'اوکی.'],
+        nav: ['خب، بریم.', 'یک لحظه...', 'این یکی جالب بود.'],
+        confused: ['هوم...', 'صبر کن...', 'اوه.']
+      };
+      var MV = { calm: { a: 5, z: .85, v: 230 }, normal: { a: 7, z: .7, v: 400 }, energetic: { a: 11, z: .55, v: 720 }, flee: { a: 14, z: .8, v: 900 } };
+      var INTERACTIVE = 'a[href],button,input,select,textarea,label,summary,[role="button"],[role="link"],[role="menuitem"],[role="tab"],[contenteditable="true"],[onclick],video,audio,iframe';
+      var CHROME = 'header,nav,dialog,[role="banner"],[role="navigation"],[role="dialog"],[aria-modal="true"],form,[role="toolbar"]';
+      var CTA = 'button,[role="button"],input[type="submit"],input[type="button"],a[class*="btn"],a[class*="button"],a[class*="cta"]';
+      var HOVERABLE = 'a[href],button,[role="button"],input[type="submit"],input[type="button"],summary';
+      var SCROLLINT = { IDLE: 1, OBSERVE: 1, CURIOUS: 1, THINKING: 1, FOLLOW_POINTER: 1, NOTICE_INTERACTION: 1, REST: 1, WATCH_SCROLL: 1 };
+
+      var S = { x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0, hasT: false, mv: MV.normal, onArrive: null, arrOff: false, allowOff: false, deadline: 0,
+        w: 56, h: 38, vw: 1000, vh: 700, sf: { t: 0, r: 0, b: 0, l: 0 }, scale: 1, ang: 0, pose: 0, lean: 0, sx: 1, sy: 1,
+        gx: 0, gy: 0, tgx: 0, tgy: 0, mouse: !TOUCH, lastAct: now(), spots: [], nextSpeak: 0, recent: [], energy: .5, curio: .4,
+        reading: false, typing: 0, modal: false, paused: false, raf: 0, lt: 0, tk: 0, tm: [], eyeBase: '', wakeAcc: 0, deep: false,
+        nextSacc: 0, pokes: [], greeted: false, hiddenAt: 0, href: location.href, lastEnv: 0, lastUnob: 0 };
+      var P = { x: -999, y: -999, t: 0, sp: 0, dir: 0, in: false, near: 0 };
+      var T = { x: 0, y: 0, in: false, lp: 0 };
+      var G = { mode: 'none', px: 0, py: 0, ax: 0, ay: 0, el: null };
+      var Sc = { key: null, last: 0, lt: 0, sp: 0, dir: 0, peak: 0, run: 0, rev: [], samples: [], et: 0, stopAt: 0, slowSince: 0, acc: 0, confused: false, lastGaze: 0 };
+      var B = { name: 'IDLE', since: 0, until: 0, data: {}, lock: 0 };
+      var CD = {};
+      function ready(k) { return now() >= (CD[k] || 0); }
+      function arm(k, ms) { CD[k] = now() + ms; }
+
+      /* ───────────── small helpers ───────────── */
+      function setCls(c, v) { rb.classList.toggle(c, !!v); }
+      function setEyeCls(n) { ['wide', 'half', 'closed'].forEach(function (k) { rb.classList.toggle('e-' + k, k === n); }); }
+      var eyeT = 0;
+      function eye(n, ms) { clearTimeout(eyeT); setEyeCls(n); if (ms) eyeT = setTimeout(function () { setEyeCls(S.eyeBase); }, ms); }
+      var actT = 0;
+      function act(c, ms) { if (RM) return; actEl.classList.remove('hop', 'stl', 'str', 'jit'); void actEl.offsetWidth; actEl.classList.add(c); if (c !== 'jit') { clearTimeout(actT); actT = setTimeout(function () { actEl.classList.remove(c); }, ms || 700); } }
+      function actClear() { actEl.classList.remove('jit'); }
+      function later(fn, ms) { var d = B.data; S.tm.push(setTimeout(function () { if (B.data === d) safe(fn)(); }, ms)); }
+      function bounds(off) {
+        var p = TOUCH ? 8 : 12, ox = off ? S.w * .7 : 0, oy = off ? S.h * .7 : 0;
+        return { x0: S.sf.l + p - ox, x1: S.vw - S.w - S.sf.r - p + ox, y0: S.sf.t + p - oy, y1: S.vh - S.h - S.sf.b - p + oy };
+      }
+      function rectOf(el) { return el.getBoundingClientRect(); }
+
+      /* ───────────── gaze ───────────── */
+      function gaze(m) { G.mode = m; G.el = null; loop(); }
+      function gazeAbs(ax, ay) { G.mode = 'abs'; G.ax = ax; G.ay = ay; loop(); }
+      function gazePoint(x, y) { G.mode = 'point'; G.px = x; G.py = y; loop(); }
+      function updEl() { if (G.el && G.el.isConnected) { var r = rectOf(G.el); G.px = clamp(r.left + r.width / 2, r.left, r.right); G.py = clamp(r.top + Math.min(r.height / 2, 120), r.top, r.bottom); } }
+      function gazeEl(el) { G.mode = 'el'; G.el = el; updEl(); loop(); }
+      function norm(dx, dy) { var d = Math.sqrt(dx * dx + dy * dy) || 1, m = Math.min(1, d / 180); return [dx / d * m, dy / d * m]; }
+      function gazeTarget(t) {
+        var cx = S.x + S.w / 2, cy = S.y + S.h * .3, r;
+        switch (G.mode) {
+          case 'pointer': if (P.in && S.mouse) { r = norm(P.x - cx, P.y - cy); S.tgx = r[0]; S.tgy = r[1]; } else { S.tgx = 0; S.tgy = 0; } break;
+          case 'point': case 'el': r = norm(G.px - cx, G.py - cy); S.tgx = r[0]; S.tgy = r[1]; break;
+          case 'move': var sp = Math.sqrt(S.vx * S.vx + S.vy * S.vy); if (sp > 25) { S.tgx = clamp(S.vx / 260, -1, 1); S.tgy = clamp(S.vy / 260, -1, 1); } else { S.tgx = 0; S.tgy = 0; } break;
+          case 'abs': S.tgx = G.ax; S.tgy = G.ay; break;
+          case 'scan': S.tgx = Math.sin(t / 380) * .95; S.tgy = Math.sin(t / 900) * .2; break;
+          default: S.tgx = 0; S.tgy = 0;
+        }
+      }
+
+      /* ───────────── movement engine ───────────── */
+      function setRM(v) { RM = v; rb.classList.toggle('rm', v); }
+      function relocate(x, y, cb) {
+        rb.classList.add('fade'); clearTimeout(S.rl);
+        S.rl = setTimeout(function () {
+          S.x = x; S.y = y; S.vx = S.vy = 0; S.hasT = false; S.allowOff = false; write(); rb.classList.remove('fade');
+          if (cb) setTimeout(safe(cb), 420);
+        }, 380);
+      }
+      function moveTo(x, y, style, cb, f) {
+        f = f || {};
+        var b = bounds(!!f.off); x = clamp(x, b.x0, b.x1); y = clamp(y, b.y0, b.y1);
+        if (RM) { relocate(x, y, cb); return; }
+        var m = MV[style] || MV.normal, d = Math.hypot(x - S.x, y - S.y);
+        if (d < 3) { if (cb) setTimeout(safe(cb), 0); return; }
+        S.tx = x; S.ty = y; S.hasT = true; S.mv = m; S.onArrive = cb || null; S.arrOff = !!f.off; S.allowOff = !!(f.off || f.free);
+        S.deadline = now() + d / (m.v * S.scale * .35) * 1000 + 2500;
+        rb.classList.add('mv'); loop();
+      }
+      function arrive() {
+        S.hasT = false; S.x = S.tx; S.y = S.ty; S.vx = S.vy = 0; rb.classList.remove('mv');
+        if (!S.arrOff) S.allowOff = false;
+        var cb = S.onArrive; S.onArrive = null; if (cb) { try { cb(); } catch (e) {} }
+      }
+      var wx = NaN, wy = NaN, wa = NaN, wsx = NaN, wsy = NaN, wgx = NaN, wgy = NaN;
+      function write() {
+        var tx = Math.round(S.x * 10) / 10, ty = Math.round(S.y * 10) / 10;
+        if (tx !== wx || ty !== wy) { wx = tx; wy = ty; rb.style.transform = 'translate3d(' + tx + 'px,' + ty + 'px,0)'; }
+        var a = Math.round(S.ang * 20) / 20, sx = Math.round(S.sx * 1000) / 1000, sy = Math.round(S.sy * 1000) / 1000;
+        if (a !== wa || sx !== wsx || sy !== wsy) { wa = a; wsx = sx; wsy = sy; tilt.style.transform = 'rotate(' + a + 'deg) scale(' + sx + ',' + sy + ')'; }
+        var ex = Math.round(S.gx * 620) / 10, ey = Math.round(S.gy * 460) / 10;
+        if (ex !== wgx || ey !== wgy) { wgx = ex; wgy = ey; gz.setAttribute('transform', 'translate(' + ex + ' ' + ey + ')'); }
+        if (bubOn) placeBubble();
+      }
+      function loop() { if (S.raf || S.paused) return; S.lt = now(); S.raf = requestAnimationFrame(frame); }
+      function frame(t) {
+        S.raf = 0; if (S.paused) return;
+        var dt = (t - S.lt) / 1000; if (!(dt > 0)) dt = .016; if (dt > .05) dt = .05; S.lt = t;
+        var keep = false;
+        gazeTarget(t);
+        if (RM) {
+          S.gx = S.tgx; S.gy = S.tgy; S.ang = 0; S.sx = S.sy = 1; write(); return;
+        }
+        if (S.hasT) {
+          var m = S.mv, dx = S.tx - S.x, dy = S.ty - S.y, d = Math.sqrt(dx * dx + dy * dy);
+          var g = m.a / (4 * m.z * m.z), vmax = m.v * S.scale, dv = Math.min(d * g, vmax);
+          var ux = d > .001 ? dx / d : 0, uy = d > .001 ? dy / d : 0, k = Math.min(1, m.a * dt);
+          S.vx += (ux * dv - S.vx) * k; S.vy += (uy * dv - S.vy) * k;
+          if ((d < 2.5 && Math.abs(S.vx) + Math.abs(S.vy) < 16) || t > S.deadline) arrive();
+        } else {
+          var f = Math.min(1, 7 * dt); S.vx -= S.vx * f; S.vy -= S.vy * f;
+          if (Math.abs(S.vx) < .3) S.vx = 0; if (Math.abs(S.vy) < .3) S.vy = 0;
+        }
+        S.x += S.vx * dt; S.y += S.vy * dt;
+        var b = bounds(S.allowOff);
+        if (S.x < b.x0) { S.x = b.x0; if (S.vx < 0) S.vx = 0; } else if (S.x > b.x1) { S.x = b.x1; if (S.vx > 0) S.vx = 0; }
+        if (S.y < b.y0) { S.y = b.y0; if (S.vy < 0) S.vy = 0; } else if (S.y > b.y1) { S.y = b.y1; if (S.vy > 0) S.vy = 0; }
+        var sp = Math.abs(S.vx) + Math.abs(S.vy);
+        var tang = S.pose + clamp(S.vx * .011, -9, 9) + S.lean;
+        S.ang += (tang - S.ang) * Math.min(1, dt * 9);
+        var tsx = 1 + Math.min(.06, Math.abs(S.vx) / 9000) - Math.min(.04, Math.abs(S.vy) / 12000);
+        var tsy = 1 + Math.min(.06, Math.abs(S.vy) / 9000) - Math.min(.04, Math.abs(S.vx) / 12000);
+        S.sx += (tsx - S.sx) * Math.min(1, dt * 10); S.sy += (tsy - S.sy) * Math.min(1, dt * 10);
+        var gk = Math.min(1, dt * 16); S.gx += (S.tgx - S.gx) * gk; S.gy += (S.tgy - S.gy) * gk;
+        write();
+        keep = S.hasT || sp > .5 || Math.abs(S.ang - tang) > .04 || Math.abs(S.sx - tsx) > .002 || Math.abs(S.gx - S.tgx) > .01 || Math.abs(S.gy - S.tgy) > .01 ||
+          G.mode === 'scan' || (G.mode === 'pointer' && S.mouse && P.in && t - P.t < 300);
+        if (keep) S.raf = requestAnimationFrame(frame);
+      }
+
+      /* ───────────── DOM awareness / obstruction ───────────── */
+      var PTS = [[.1, .15], [.5, .15], [.9, .15], [.1, .55], [.5, .55], [.9, .55], [.1, .95], [.5, .95], [.9, .95]];
+      function hasOwnText(el) { var n = el.childNodes, l = Math.min(n.length, 10); for (var i = 0; i < l; i++) if (n[i].nodeType === 3 && /\S/.test(n[i].nodeValue)) return true; return false; }
+      function classify(el) {
+        if (el === D.body || el === D.documentElement) return 0;
+        if (el.closest(INTERACTIVE)) return 10;
+        if (el.closest(CHROME)) return 6;
+        if (el instanceof SVGElement || /^(IMG|VIDEO|CANVAS|PICTURE)$/.test(el.tagName)) return 2;
+        if (/^(P|H[1-6]|LI|SPAN|TD|TH|BLOCKQUOTE|PRE|CODE|STRONG|EM|B|I|SMALL|DT|DD|FIGCAPTION)$/.test(el.tagName) || hasOwnText(el)) return 5;
+        return 0;
+      }
+      function spotScore(x, y) {
+        var pen = 0, free = 0;
+        for (var i = 0; i < PTS.length; i++) {
+          var px = x + PTS[i][0] * S.w, py = y + PTS[i][1] * S.h;
+          if (px < 0 || py < 0 || px >= S.vw || py >= S.vh) continue;
+          var el = D.elementFromPoint(px, py);
+          if (!el || el === host || el === D.body || el === D.documentElement) { free++; continue; }
+          var c = classify(el); if (c === 0) free++; pen += c;
+        }
+        return { pen: pen, free: free };
+      }
+      function pickSpot(kind, rect, o) {
+        o = o || {};
+        var b = bounds(false), c = [], i, cx = S.x, cy = S.y, W_ = b.x1 - b.x0;
+        if (kind === 'rest') {
+          [b.x0, b.x1].forEach(function (x) { [b.y0, b.y1, (b.y0 + b.y1) / 2].forEach(function (y) { c.push([x, y]); }); });
+          c.push([rand(b.x0, b.x1), b.y1], [rand(b.x0, b.x1), b.y0]);
+        } else if (kind === 'near' && rect) {
+          var g = 10, mx = rect.left + (rect.width || 0) / 2 - S.w / 2, my = rect.top + (rect.height || 0) / 2 - S.h / 2;
+          c = [[rect.left - S.w - g, my], [rect.right + g, my], [mx, rect.top - S.h - g], [mx, rect.bottom + g], [rect.left - S.w - g, rect.top], [rect.right + g, rect.top],
+            [rect.left - S.w - g, rect.bottom - S.h], [rect.right + g, rect.bottom - S.h], [b.x0, rand(b.y0, b.y1)], [b.x1, rand(b.y0, b.y1)]];
+        } else if (kind === 'flee') {
+          var base = Math.atan2(cy + S.h / 2 - P.y, cx + S.w / 2 - P.x);
+          for (i = 0; i < 9; i++) { var a = base + rand(-1.2, 1.2), d = rand(220, 420) * S.scale; c.push([cx + Math.cos(a) * d, cy + Math.sin(a) * d]); }
+        } else if (kind === 'play') {
+          var r = o.r || 250;
+          for (i = 0; i < 10; i++) { var a2 = rand(0, 6.283), d2 = rand(r * .4, r); c.push([cx + Math.cos(a2) * d2, cy + Math.sin(a2) * d2 * .7]); }
+        } else {
+          for (i = 0; i < 14; i++) {
+            var x = chance(.55) ? (chance(.5) ? rand(b.x0, b.x0 + W_ * .12) : rand(b.x1 - W_ * .12, b.x1)) : rand(b.x0, b.x1);
+            c.push([x, rand(b.y0, b.y1)]);
+          }
+        }
+        var best = null, bv = 1e9;
+        for (i = 0; i < c.length; i++) {
+          var px = clamp(c[i][0], b.x0, b.x1), py = clamp(c[i][1], b.y0, b.y1);
+          var sc = spotScore(px, py), v = sc.pen - sc.free * .3 + rand(0, 2.2), dd = Math.hypot(px - cx, py - cy);
+          if (kind === 'roam' || kind === 'rest') { if (dd < 110) v += 6; v -= Math.min(dd, 520) / 260; }
+          for (var k = 0; k < S.spots.length; k++) if (Math.hypot(px - S.spots[k].x, py - S.spots[k].y) < 130) v += 4;
+          if (kind === 'flee' && P.sp > 300) { var dot = (px - cx) * Math.cos(P.dir) + (py - cy) * Math.sin(P.dir); if (dot > 0) v += 3; }
+          if (v < bv) { bv = v; best = { x: px, y: py }; }
+        }
+        best = best || { x: cx, y: cy };
+        S.spots.push(best); if (S.spots.length > 3) S.spots.shift();
+        return best;
+      }
+      function unobstruct() {
+        if (S.hasT || { SLEEP: 1, HIDE: 1, ROAM: 1, PLAY: 1, RETURN: 1, EXCITED: 1 }[B.name] || !ready('unob')) return;
+        var sc = spotScore(S.x, S.y);
+        if (sc.pen >= 14) { arm('unob', 2500); var s = pickSpot('play', null, { r: 240 }); moveTo(s.x, s.y, 'calm'); }
+      }
+
+      var Dom = { seen: new WeakSet(), cnt: 0, vis: new Map(), act: new WeakSet(), io: null, cur: null, mo: null, mt: 0 };
+      function domScan() {
+        if (!Dom.io) return;
+        var l = D.querySelectorAll('h1,h2,h3,section,article,main>*,[role="main"]>*,figure');
+        for (var i = 0; i < l.length && Dom.cnt < 140; i++) {
+          var el = l[i]; if (el === host || Dom.seen.has(el)) continue;
+          Dom.seen.add(el); Dom.io.observe(el); Dom.cnt++;
+        }
+      }
+      function domInit() {
+        if (!('IntersectionObserver' in W)) return;
+        Dom.io = new IntersectionObserver(safe(function (es) {
+          es.forEach(function (en) {
+            var el = en.target;
+            if (en.isIntersecting) {
+              Dom.vis.set(el, en.intersectionRatio);
+              var big = en.intersectionRatio >= .4 || en.intersectionRect.height >= S.vh * .45;
+              if (big && !Dom.act.has(el)) { Dom.act.add(el); onSection(el); }
+            } else { Dom.vis.delete(el); Dom.act.delete(el); }
+          });
+        }), { threshold: [0, .25, .5, .75] });
+        domScan();
+        if ('MutationObserver' in W) {
+          Dom.mo = new MutationObserver(function () { clearTimeout(Dom.mt); Dom.mt = setTimeout(safe(function () { if (!D.hidden) domScan(); }), 1200); });
+          Dom.mo.observe(D.body, { childList: true, subtree: true });
+        }
+      }
+      function randVisible() {
+        var arr = []; Dom.vis.forEach(function (r, el) { arr.push(el); });
+        for (var i = 0; i < 4 && arr.length; i++) { var el = pick(arr); if (!el.isConnected) continue; var r = rectOf(el); if (r.width > 30 && r.height > 12 && r.bottom > 0 && r.top < S.vh) return el; }
+        return null;
+      }
+
+      /* ───────────── speech engine ───────────── */
+      var bubOn = false, bw = 0, bh = 0, bubT = 0, bubT2 = 0, bl = -1e9, btp = -1e9, bup = null, btx = -1e9;
+      function placeBubble() {
+        var cx = S.x + S.w / 2, m = 6, left = clamp(cx - bw / 2, m + S.sf.l, S.vw - bw - m - S.sf.r);
+        var up = S.y - bh - 10 >= S.sf.t + 2, topv = up ? S.y - bh - 9 : S.y + S.h + 9;
+        var L = Math.round(left - S.x), Tp = Math.round(topv - S.y), tx = Math.round(clamp(cx - left, 10, Math.max(10, bw - 10)));
+        if (L !== bl || Tp !== btp) { bl = L; btp = Tp; bub.style.left = L + 'px'; bub.style.top = Tp + 'px'; }
+        if (tx !== btx) { btx = tx; bub.style.setProperty('--tx', tx + 'px'); }
+        if (up !== bup) { bup = up; bub.classList.toggle('up', up); bub.classList.toggle('dn', !up); }
+      }
+      function showBubble(txt) {
+        clearTimeout(bubT); clearTimeout(bubT2);
+        bt.textContent = txt; bub.classList.remove('show');
+        bw = bub.offsetWidth; bh = bub.offsetHeight; bubOn = true; bl = btp = btx = -1e9; bup = null; placeBubble();
+        requestAnimationFrame(function () { bub.classList.add('show'); });
+        bubT = setTimeout(function () { bub.classList.remove('show'); bubT2 = setTimeout(function () { bubOn = false; }, 300); }, clamp(1500 + txt.length * 60, 1900, 3800));
+      }
+      function hideBubble() { clearTimeout(bubT); clearTimeout(bubT2); bub.classList.remove('show'); bubOn = false; }
+      function speak(ctx, p, force) {
+        var t = now();
+        if (!force) {
+          if (t < S.nextSpeak || bubOn || B.name === 'SLEEP' || B.name === 'HIDE' || S.modal) return;
+          var pp = p * (TOUCH ? .7 : 1) * (RM ? .6 : 1);
+          if (S.reading || S.typing > t) pp *= .35;
+          if (!chance(pp)) return;
+        }
+        var list = PH[ctx] || PH.presence, opts = list.filter(function (x) { return S.recent.indexOf(x) < 0; });
+        var txt = pick(opts.length ? opts : list);
+        S.recent.push(txt); if (S.recent.length > 6) S.recent.shift();
+        showBubble(txt);
+        S.nextSpeak = t + (TOUCH ? rand(24000, 50000) : rand(16000, 38000)) * (RM ? 1.5 : 1);
+      }
+
+      /* ───────────── behavior engine ───────────── */
+      function leave() {
+        S.onArrive = null; S.pose = 0; S.lean = 0; S.tm.forEach(clearTimeout); S.tm = [];
+        actClear(); setCls('ex', false); setCls('sleep', false); setCls('calm', false);
+        S.eyeBase = ''; eye(''); S.deep = false;
+      }
+      function setState(name, data) {
+        var t = now(); leave();
+        B.name = name; B.since = t; B.data = data || {}; B.until = t + 3000; B.lock = B.data.lock ? t + B.data.lock : 0;
+        if (name === 'SLEEP' || name === 'HIDE') hideBubble();
+        var f = ENTER[name]; if (f) f(B.data, t);
+        loop();
+      }
+      function afterMove() { if (chance(.5)) setState('OBSERVE', {}); else setState('IDLE', {}); }
+      function overlaps(r) { return !(S.x + S.w < r.left || S.x > r.right || S.y + S.h < r.top || S.y > r.bottom); }
+      function nearEdge() { var b = bounds(false); return S.x < b.x0 + 40 || S.x > b.x1 - 40 || S.y < b.y0 + 40 || S.y > b.y1 - 40; }
+      function followStep() {
+        var f = B.data.f, cx = P.x, cy = P.y, rx = S.x + S.w / 2 - cx, ry = S.y + S.h / 2 - cy, d = Math.sqrt(rx * rx + ry * ry) || 1;
+        var ux = rx / d, uy = ry / d; if (d < 30) { ux = f.side; uy = .3; }
+        var tx = cx + ux * f.dist, ty = cy + uy * f.dist;
+        if (Math.hypot(tx - (S.x + S.w / 2), ty - (S.y + S.h / 2)) > 26) moveTo(tx - S.w / 2, ty - S.h / 2, 'normal');
+      }
+      function playStep(d) {
+        if (B.name !== 'PLAY' || B.data !== d) return;
+        if (d.legs-- <= 0) { setState('IDLE', {}); return; }
+        var s;
+        if (S.mouse && P.in && d.orbit) { d.ang = (d.ang || rand(0, 6.28)) + rand(1.4, 2.4); s = { x: P.x + Math.cos(d.ang) * 150 - S.w / 2, y: P.y + Math.sin(d.ang) * 130 - S.h / 2 }; }
+        else s = pickSpot('play', null, { r: 260 * S.scale });
+        moveTo(s.x, s.y, 'energetic', function () { act('hop'); later(function () { playStep(d); }, rand(150, 400)); });
+      }
+      var ENTER = {
+        IDLE: function (d, t) { var deep = chance(.28); S.deep = deep; B.until = t + (deep ? rand(8000, 15000) : rand(2800, 7500)) * (RM ? 2 : 1); gaze('none'); },
+        OBSERVE: function (d, t) {
+          B.until = t + rand(2200, 4800);
+          if (d.gaze === 'section' && Dom.cur && Dom.cur.isConnected) gazeEl(Dom.cur);
+          else if (S.mouse && P.in && t - P.t < 8000) gaze('pointer');
+          else { var el = randVisible(); if (el) gazeEl(el); else gaze('none'); }
+          S.pose = rand(-4, 4); speak('observe', .22);
+        },
+        ROAM: function (d, t) {
+          B.until = t + 14000; var s = d.flee ? pickSpot('flee') : pickSpot('roam');
+          var st = d.flee ? 'flee' : (S.energy > .65 && INT === 1 ? 'normal' : 'calm');
+          gaze('move'); if (d.flee) { eye('wide', 900); speak('pointer', .15); }
+          moveTo(s.x, s.y, st, afterMove);
+        },
+        CURIOUS: function (d, t) {
+          B.until = t + rand(1800, 3400);
+          if (d.pt) gazePoint(d.pt.x, d.pt.y); else if (d.el) gazeEl(d.el); else if (S.mouse && P.in) gaze('pointer'); else gazeAbs(rand(-.8, .8), rand(-.4, .4));
+          S.pose = (chance(.5) ? 1 : -1) * rand(6, 10); eye('wide', 500); act('stl');
+          if (d.to) moveTo(d.to.x, d.to.y, 'normal');
+          speak(d.speak || 'curious', d.p || .3);
+        },
+        FOLLOW_POINTER: function (d, t) {
+          B.until = t + rand(3200, 6500); gaze('pointer'); S.pose = rand(-4, 4);
+          d.f = { dist: rand(110, 170) * Math.max(.7, S.scale), side: chance(.5) ? 1 : -1 };
+          followStep(); speak('pointer', .22);
+        },
+        WATCH_SCROLL: function (d, t) { B.until = t + 600; },
+        NOTICE_INTERACTION: function (d, t) {
+          B.until = t + rand(1300, 2300); if (d.el) gazeEl(d.el); S.pose = rand(-6, 6); eye('wide', 350);
+          if (d.el && d.el.isConnected) {
+            var r = rectOf(d.el);
+            if (d.near || overlaps(r)) { var s = pickSpot('near', r); moveTo(s.x, s.y, 'calm'); }
+          }
+          if (d.speak) speak(d.speak, .3);
+        },
+        EXCITED: function (d, t) {
+          B.until = t + rand(1200, 2000); setCls('ex', true); act('hop'); eye('wide', 900); gaze('move');
+          if (!RM && (INT > .8 || chance(.5))) { var s = pickSpot('play', null, { r: 170 * INT }); moveTo(s.x, s.y, 'energetic', function () { act('hop'); }); }
+          speak('click', .3);
+        },
+        THINKING: function (d, t) {
+          B.until = t + rand(1600, 3000); actEl.classList.add('jit'); if (RM) actClear();
+          if (d.scan) gaze('scan'); else gazeAbs((chance(.5) ? 1 : -1) * rand(.3, .7), -.7);
+          S.eyeBase = 'half'; eye('half');
+        },
+        PLAY: function (d, t) { B.until = t + 9000; setCls('ex', true); d.legs = Math.floor(rand(3, 5)); gaze('move'); speak('play', .35); playStep(d); },
+        REST: function (d, t) {
+          B.until = t + rand(7000, 16000); setCls('calm', true); gaze('none');
+          later(function () { S.eyeBase = 'half'; eye('half'); }, 2500);
+          if (!d.stay) { var s = pickSpot('rest'); moveTo(s.x, s.y, 'calm'); }
+        },
+        SLEEP: function (d, t) {
+          B.until = Infinity; setCls('calm', true); gaze('none');
+          var doze = function () { if (B.name !== 'SLEEP' || B.data !== d) return; setCls('sleep', true); S.eyeBase = 'closed'; eye('closed'); S.pose = rand(-3, 3); loop(); };
+          if (nearEdge()) doze(); else { var s = pickSpot('rest'); moveTo(s.x, s.y, 'calm', doze); }
+        },
+        WAKE: function (d, t) {
+          B.until = t + rand(900, 1500); eye('wide', 800); act('str'); gaze(S.mouse && P.in ? 'pointer' : 'none'); speak(d.ctx || 'wake', d.p || .4);
+        },
+        HIDE: function (d, t) {
+          B.until = t + rand(3500, 7500);
+          var left = (S.x + S.w / 2) < S.vw / 2; if (chance(.2)) left = !left;
+          var b = bounds(false), y = clamp(S.y + rand(-80, 80), b.y0, b.y1);
+          S.pose = left ? 12 : -12; gazeAbs(left ? .8 : -.8, .1);
+          moveTo(left ? -S.w * .58 : S.vw - S.w * .42, y, 'normal', null, { off: true });
+        },
+        RETURN: function (d, t) {
+          B.until = t + 10000; var s = d.to || pickSpot('roam'); gaze('move'); eye('wide', 700);
+          moveTo(s.x, s.y, d.first ? 'calm' : 'energetic', function () {
+            if (d.first && !S.greeted) { S.greeted = true; speak('greet', 1, true); }
+            else speak('back', .4);
+            if (!d.first && !RM && chance(.3)) setState('EXCITED', {}); else setState('OBSERVE', {});
+          }, { free: true });
+        }
+      };
+      function decide() {
+        var t = now(), idle = t - S.lastAct, calm = S.reading || S.typing > t || S.modal, e = S.energy, c = S.curio, w = {};
+        w.IDLE = 3 + (calm ? 4 : 0) + (RM ? 3 : 0);
+        w.OBSERVE = 2 + c * 2;
+        w.ROAM = RM ? .2 : (calm ? .3 : 1.1 + e * 1.7);
+        w.CURIOUS = .6 + c; w.THINKING = .5;
+        w.REST = .5 + (calm ? 2.5 : 0) + Math.min(4, idle / 15000);
+        if (!RM && !calm) {
+          w.EXCITED = .25 + e * .4; w.HIDE = .3;
+          if (e > .55) w.PLAY = .9 * e;
+          if (S.mouse && P.in && t - P.t < 6000) w.FOLLOW_POINTER = .7 + c * 1.6;
+        }
+        if (idle > 25000) { w.ROAM *= .3; w.PLAY = 0; w.EXCITED = 0; w.REST += 4; }
+        if (S.modal) w = { REST: 6, IDLE: 2 };
+        if (w[B.name]) w[B.name] *= .2;
+        var sum = 0, k; for (k in w) sum += w[k];
+        var r = Math.random() * sum; for (k in w) { r -= w[k]; if (r <= 0) break; }
+        var d = {}; if (k === 'CURIOUS') d.el = randVisible(); if (k === 'PLAY') d.orbit = S.mouse && P.in && chance(.5);
+        return { n: k, d: d };
+      }
+      function next() {
+        if (B.name === 'HIDE') { setState('RETURN', {}); return; }
+        var n = decide(); setState(n.n, n.d);
+      }
+      function wakeUp() { if (B.name === 'SLEEP') setState('WAKE', { ctx: 'wake', p: .35 }); }
+      function activity(strong, amt) {
+        S.lastAct = now();
+        if (B.name === 'SLEEP') { S.wakeAcc += strong ? 400 : (amt || 0); if (S.wakeAcc >= 300) { S.wakeAcc = 0; wakeUp(); } } else S.wakeAcc = 0;
+      }
+
+      /* ───────────── scroll intelligence ───────────── */
+      function scrollPos(el) { return el ? el.scrollTop : (W.pageYOffset || D.documentElement.scrollTop || 0); }
+      function kick(dy, cls) {
+        if (S.allowOff || RM) return;
+        var m = cls === 'vf' ? 1.1 : cls === 'f' ? .8 : .5, k = clamp(-dy * m, -110, 110) * S.scale;
+        if (!S.hasT) { S.tx = S.x; S.ty = S.y; S.hasT = true; S.mv = MV.normal; S.onArrive = null; S.arrOff = false; S.deadline = now() + 3000; }
+        S.vy = clamp(S.vy + k * .6, -260, 260); S.vx += (Math.random() - .5) * (cls === 's' ? 4 : 14);
+        loop();
+      }
+      function onScroll(dy, d, t) {
+        var cls = Sc.sp > 2200 ? 'vf' : Sc.sp > 650 ? 'f' : 's';
+        S.lastAct = t; S.energy = Math.min(1, S.energy + (cls === 's' ? .002 : .01));
+        if (B.name === 'SLEEP') { wakeUp(); return; }
+        if (RM) return;
+        if (SCROLLINT[B.name] && t >= B.lock && B.name !== 'WATCH_SCROLL') setState('WATCH_SCROLL', { cls: cls });
+        if (B.name === 'WATCH_SCROLL') {
+          B.until = t + 450;
+          if (t - Sc.lastGaze > 300) { Sc.lastGaze = t; gazeAbs(rand(-.25, .25), d > 0 ? .85 : -.85); }
+        }
+        kick(dy, cls);
+        var s;
+        if (cls === 'vf') {
+          if (ready('vf')) {
+            arm('vf', rand(6000, 10000)); eye('wide', 800); S.lean = -d * 8; setTimeout(function () { S.lean = 0; loop(); }, 900);
+            speak('fast', .55);
+            if (chance(.35)) { s = pickSpot('rest'); moveTo(s.x, s.y, 'energetic'); }
+          }
+        } else if (cls === 'f') {
+          if (ready('f')) {
+            arm('f', rand(3500, 7000)); S.lean = -d * 5; setTimeout(function () { S.lean = 0; loop(); }, 700);
+            if (chance(.5)) { s = pickSpot('play', null, { r: 180 * S.scale }); moveTo(s.x, s.y, 'normal'); } else if (chance(.3)) act('stl');
+          }
+        } else if (ready('s') && chance(.4)) {
+          arm('s', rand(2500, 5200)); s = pickSpot('play', null, { r: 120 * S.scale }); moveTo(s.x, s.y, 'calm');
+        }
+        if (Sc.rev.length >= 2 && ready('rev')) {
+          arm('rev', rand(5000, 9000)); S.pose = -d * 10; setTimeout(function () { S.pose = 0; loop(); }, 1200); eye('wide', 500);
+          if (Sc.rev.length >= 4) Sc.confused = true; speak('reverse', .8);
+          loop();
+        }
+        if (Sc.acc > 20000 && Sc.sp > 900 && ready('acc')) { arm('acc', 3000); act('stl'); }
+      }
+      function onScrollEnd() {
+        var t = now(), peak = Sc.peak; Sc.peak = 0; Sc.stopAt = t; Sc.sp = 0; Sc.samples.length = 0; Sc.slowSince = 0;
+        var conf = Sc.confused; Sc.confused = false; S.lean = 0;
+        if (B.name === 'WATCH_SCROLL') {
+          if (conf) { setState('THINKING', {}); speak('confused', .5); }
+          else if (peak > 1500 && chance(.8)) { setState('THINKING', { scan: true, lock: 1200 }); speak('stop', .45); }
+          else if (chance(.55)) setState('OBSERVE', { gaze: 'section' }); else setState('IDLE', {});
+        }
+        setTimeout(safe(unobstruct), 500);
+      }
+      function onSection(el) {
+        Dom.cur = el;
+        if (RM || S.modal || !ready('sec') || Sc.sp > 650 || B.name === 'SLEEP' || B.name === 'HIDE' || t_() < B.lock) return;
+        if (!chance(.5 * INT + .1)) return;
+        arm('sec', rand(8000, 14000)); setState('NOTICE_INTERACTION', { el: el, near: true, speak: 'section', lock: 1500 });
+      }
+      function t_() { return now(); }
+
+      /* ───────────── interaction sensors ───────────── */
+      on(W, 'scroll', function (e) {
+        var tg = e.target, el = (tg === D || tg === D.documentElement || tg === D.body || tg === W) ? null : tg, key = el || 'win';
+        var pos = scrollPos(el), t = now();
+        if (Sc.key !== key) { Sc.key = key; Sc.last = pos; Sc.lt = t; return; }
+        var dy = pos - Sc.last; if (!dy) return;
+        var dt = t - Sc.lt; if (dt < 6) return;
+        var prev = Sc.sp; Sc.last = pos; Sc.lt = t;
+        Sc.samples.push([t, Math.abs(dy)]);
+        while (Sc.samples.length && t - Sc.samples[0][0] > 200) Sc.samples.shift();
+        var sum = 0; for (var i = 0; i < Sc.samples.length; i++) sum += Sc.samples[i][1];
+        Sc.sp = sum / .2; Sc.acc = (Sc.sp - prev) / dt * 1000; Sc.peak = Math.max(Sc.peak, Sc.sp);
+        var d = dy > 0 ? 1 : -1;
+        if (Sc.dir && d !== Sc.dir) { if (Sc.run > 50) Sc.rev.push(t); Sc.run = 0; }
+        Sc.run += Math.abs(dy); Sc.dir = d;
+        while (Sc.rev.length && t - Sc.rev[0] > 3500) Sc.rev.shift();
+        if (Sc.sp < 320) { if (!Sc.slowSince) Sc.slowSince = t; } else Sc.slowSince = 0;
+        onScroll(dy, d, t);
+        clearTimeout(Sc.et); Sc.et = setTimeout(safe(onScrollEnd), 170);
+      }, { passive: true, capture: true });
+
+      on(D, 'pointermove', function (e) {
+        if (e.pointerType === 'touch') return;
+        var t = now(), dx = e.clientX - P.x, dy = e.clientY - P.y, dt = t - P.t, mv = Math.sqrt(dx * dx + dy * dy);
+        S.mouse = true;
+        if (P.in && dt > 0 && dt < 200) { P.sp = P.sp * .7 + (mv / dt * 1000) * .3; if (mv > 1) P.dir = Math.atan2(dy, dx); }
+        P.x = e.clientX; P.y = e.clientY; P.t = t; P.in = true;
+        if (mv > 30) S.curio = Math.min(1, S.curio + .02);
+        activity(false, mv);
+        if (G.mode === 'pointer') loop();
+        if (P.sp > 2200 && ready('flick') && !RM && { IDLE: 1, OBSERVE: 1, REST: 1 }[B.name] && chance(.25)) { arm('flick', 9000); setState('CURIOUS', { speak: 'pointer', p: .3 }); }
+      }, { passive: true, capture: true });
+      on(D, 'mouseout', function (e) { if (!e.relatedTarget) { P.in = false; if (G.mode === 'pointer') gaze('none'); } }, { passive: true, capture: true });
+      on(D, 'mouseover', function (e) {
+        if (!S.mouse) return;
+        clearTimeout(S.ht);
+        var el = e.target && e.target.closest && e.target.closest(HOVERABLE); if (!el) return;
+        S.ht = setTimeout(safe(function () {
+          if (!el.isConnected) return;
+          var r = rectOf(el); if (P.x < r.left - 2 || P.x > r.right + 2 || P.y < r.top - 2 || P.y > r.bottom + 2) return;
+          onHover(el, r);
+        }), 380);
+      }, { passive: true, capture: true });
+      function importantEl(el, r) { return el.matches(CTA) || r.width * r.height > 7000; }
+      function onHover(el, r) {
+        if (B.name === 'SLEEP' || B.name === 'HIDE' || S.modal || !ready('hover')) return;
+        if (!chance(importantEl(el, r) ? .7 : .18)) return;
+        arm('hover', rand(4500, 9000)); S.curio = Math.min(1, S.curio + .1);
+        setState('NOTICE_INTERACTION', { el: el, speak: 'curious', lock: 1500 });
+      }
+      function poke() {
+        var t = now(); S.pokes.push(t); S.pokes = S.pokes.filter(function (x) { return t - x < 2200; });
+        S.energy = Math.min(1, S.energy + .15);
+        if (B.name === 'SLEEP') { wakeUp(); return; }
+        var n = S.pokes.length;
+        if (n >= 4) { S.pokes = []; setState('HIDE', {}); }
+        else if (n >= 2) setState('EXCITED', {});
+        else { act('stl'); eye('wide', 600); speak('curious', .5); }
+      }
+      on(D, 'click', function (e) {
+        activity(true); S.energy = Math.min(1, S.energy + .05);
+        var x = e.clientX, y = e.clientY;
+        if (x >= S.x - 8 && x <= S.x + S.w + 8 && y >= S.y - 8 && y <= S.y + S.h + 8) { poke(); return; }
+        var el = e.target && e.target.closest && e.target.closest(CTA);
+        if (el && ready('click') && !S.modal && { IDLE: 1, OBSERVE: 1, WATCH_SCROLL: 1, REST: 1, ROAM: 1 }[B.name] && chance(.45 * INT)) {
+          arm('click', rand(3500, 7000)); setState('NOTICE_INTERACTION', { el: el, speak: 'click', lock: 1200 });
+        }
+      }, { passive: true, capture: true });
+
+      on(D, 'touchstart', function (e) {
+        var t0 = e.touches && e.touches[0]; if (!t0) return;
+        T.x = t0.clientX; T.y = t0.clientY; T.in = true; activity(true);
+        clearTimeout(T.lp);
+        T.lp = setTimeout(safe(function () {
+          if (!T.in || B.name === 'SLEEP' || B.name === 'HIDE') return;
+          var r = { left: T.x - 60, right: T.x + 60, top: T.y - 60, bottom: T.y + 60, width: 120, height: 120 };
+          var s = pickSpot('near', r); setState('CURIOUS', { pt: { x: T.x, y: T.y }, to: s, speak: 'greet', p: .6 });
+        }), 550);
+        var el = e.target && e.target.closest && e.target.closest(CTA);
+        if (el && ready('click') && chance(.3) && { IDLE: 1, OBSERVE: 1, REST: 1 }[B.name]) { arm('click', 6000); setState('NOTICE_INTERACTION', { el: el, lock: 1000 }); }
+        else if ({ IDLE: 1, OBSERVE: 1 }[B.name] && chance(.4)) gazePoint(T.x, T.y);
+      }, { passive: true, capture: true });
+      on(D, 'touchmove', function (e) {
+        var t0 = e.touches && e.touches[0]; if (!t0) return;
+        if (Math.hypot(t0.clientX - T.x, t0.clientY - T.y) > 12) clearTimeout(T.lp);
+        activity(true);
+      }, { passive: true, capture: true });
+      on(D, 'touchend', function () { T.in = false; clearTimeout(T.lp); }, { passive: true, capture: true });
+      on(D, 'touchcancel', function () { T.in = false; clearTimeout(T.lp); }, { passive: true, capture: true });
+
+      function awayFrom(el) {
+        if (!el || !el.getBoundingClientRect) return;
+        var r = rectOf(el), pad = 20, rr = { left: r.left - pad, right: r.right + pad, top: r.top - pad, bottom: r.bottom + pad, width: r.width + pad * 2, height: r.height + pad * 2 };
+        if (overlaps(rr)) { var s = pickSpot('near', rr); moveTo(s.x, s.y, 'calm'); }
+      }
+      function isField(el) { return el && el.matches && el.matches('input,textarea,select,[contenteditable="true"],[contenteditable=""]'); }
+      on(D, 'keydown', function (e) {
+        activity(true); var t = now();
+        if (isField(e.target)) {
+          S.typing = t + 2600;
+          if ({ ROAM: 1, PLAY: 1, FOLLOW_POINTER: 1, EXCITED: 1, CURIOUS: 1 }[B.name]) setState('IDLE', {});
+          if (ready('field')) { arm('field', 4000); awayFrom(e.target); }
+        }
+      }, { passive: true, capture: true });
+      on(D, 'focusin', function (e) { if (isField(e.target)) { S.typing = now() + 2600; awayFrom(e.target); } }, { passive: true, capture: true });
+
+      /* ───────────── lifecycle: visibility, resize, navigation ───────────── */
+      on(D, 'visibilitychange', function () {
+        if (D.hidden) { S.paused = true; S.hiddenAt = now(); clearTimeout(S.tk); if (S.raf) { cancelAnimationFrame(S.raf); S.raf = 0; } }
+        else {
+          S.paused = false; var away = now() - S.hiddenAt; S.lt = now(); tick(); blinkLoop(); loop();
+          if (away > 12000 && B.name !== 'SLEEP' && B.name !== 'HIDE') { setState('OBSERVE', {}); speak('back', .75); }
+        }
+      });
+      function measure() {
+        S.vw = host.clientWidth || W.innerWidth; S.vh = host.clientHeight || W.innerHeight;
+        var small = TOUCH || S.vw < 700, base = small ? clamp(S.vw * .115, S.vw < 340 ? 34 : 38, 54) : clamp(S.vw * .04, 52, 78);
+        S.w = Math.round(base); S.h = Math.round(base * ASPECT);
+        rb.style.setProperty('--w', S.w + 'px'); rb.style.setProperty('--h', S.h + 'px');
+        bub.style.fontSize = (small ? 11.5 : 12.5) + 'px';
+        var cs = getComputedStyle(probe);
+        S.sf = { t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0, b: parseFloat(cs.paddingBottom) || 0, l: parseFloat(cs.paddingLeft) || 0 };
+        S.scale = clamp(Math.min(S.vw, S.vh) / 820, .6, 1.25) * (small ? .8 : 1);
+      }
+      var rzT = 0;
+      function onResize() {
+        clearTimeout(rzT);
+        rzT = setTimeout(safe(function () {
+          measure(); var b = bounds(S.allowOff);
+          S.x = clamp(S.x, b.x0, b.x1); S.y = clamp(S.y, b.y0, b.y1);
+          if (S.hasT) { var b2 = bounds(S.arrOff); S.tx = clamp(S.tx, b2.x0, b2.x1); S.ty = clamp(S.ty, b2.y0, b2.y1); }
+          write(); unobstruct(); loop();
+        }), 140);
+      }
+      on(W, 'resize', onResize, { passive: true });
+      on(W, 'orientationchange', onResize, { passive: true });
+      if (W.visualViewport) on(W.visualViewport, 'resize', onResize, { passive: true });
+      if (mqRM && mqRM.addEventListener) { var rmh = safe(function () { setRM(mqRM.matches); loop(); }); mqRM.addEventListener('change', rmh); OFF.push(function () { mqRM.removeEventListener('change', rmh); }); }
+      on(W, 'pagehide', function () {
+        try { sessionStorage.setItem('lrb', JSON.stringify({ x: S.x / S.vw, y: S.y / S.vh, t: Date.now() })); } catch (e) {}
+      });
+
+      function onNav() {
+        Dom.cnt = 0; setTimeout(safe(domScan), 600);
+        if (/(^|\W)404(\W|$)|not found|پیدا نشد|یافت نشد/i.test(D.title) && B.name !== 'SLEEP') { setState('THINKING', {}); speak('confused', .9); return; }
+        if (ready('nav') && B.name !== 'SLEEP' && B.name !== 'HIDE') { arm('nav', 4000); setState('THINKING', {}); speak('nav', .35); }
+      }
+      function checkEnv() {
+        var m = false;
+        try {
+          var el = D.querySelector('dialog[open],[aria-modal="true"]');
+          if (el && !el.hidden) { var r = rectOf(el), cs = getComputedStyle(el); m = r.width > 80 && r.height > 60 && cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0'; }
+        } catch (e) {}
+        if (m !== S.modal) { S.modal = m; if (m && B.name !== 'SLEEP' && B.name !== 'HIDE') setState('REST', {}); }
+        if (location.href !== S.href) { S.href = location.href; onNav(); }
+      }
+
+      /* ───────────── brain tick ───────────── */
+      function saccade(t) {
+        if (t > S.nextSacc && !S.deep && G.mode !== 'pointer' && G.mode !== 'el') {
+          S.nextSacc = t + rand(1400, 4200);
+          if (chance(.55)) gazeAbs(rand(-.7, .7), rand(-.4, .4)); else gaze('none');
+        }
+      }
+      function tick() {
+        clearTimeout(S.tk); if (S.paused) return;
+        var t = now();
+        try {
+          if (t - S.lastEnv > 1200) { S.lastEnv = t; checkEnv(); }
+          var idle = t - S.lastAct;
+          S.energy += ((idle > 30000 ? .15 : .4) - S.energy) * .01; S.curio *= .985; P.sp *= .8;
+          if (G.mode === 'el') { updEl(); loop(); }
+          // reading detection
+          var sinceStop = Sc.stopAt ? t - Sc.stopAt : 1e9;
+          var slowCont = Sc.slowSince && t - Sc.slowSince > 4000;
+          var stoppedRead = Sc.stopAt && sinceStop > 2500 && sinceStop < 30000 && idle < 45000;
+          S.reading = !!(slowCont || stoppedRead) && !S.modal;
+          if (stoppedRead && sinceStop > 6000 && P.sp < 250 && ready('read') && !S.modal && (B.name === 'IDLE' || B.name === 'OBSERVE')) {
+            arm('read', 25000); if (chance(.6)) { setState('REST', { stay: chance(.5) }); speak('presence', .25); }
+          }
+          // sleepiness
+          if (B.name === 'REST' && idle > 55000 && t - B.since > 4000) setState('SLEEP', {});
+          else if ((B.name === 'IDLE' || B.name === 'OBSERVE') && idle > 75000) setState('SLEEP', {});
+          // per-state upkeep
+          if (B.name === 'FOLLOW_POINTER') { if (S.mouse && P.in) followStep(); else B.until = t; }
+          else if (B.name === 'IDLE' || B.name === 'OBSERVE' || B.name === 'REST') saccade(t);
+          else if (B.name === 'HIDE' && S.mouse && P.in && t - B.since > 1500 && Math.hypot(P.x - (S.x + S.w / 2), P.y - (S.y + S.h / 2)) < 150) setState('RETURN', {});
+          // pointer proximity
+          if (S.mouse && P.in && !RM && t - P.t < 500 && B.name !== 'SLEEP' && B.name !== 'HIDE' && B.name !== 'FOLLOW_POINTER' && !S.modal) {
+            var d = Math.hypot(P.x - (S.x + S.w / 2), P.y - (S.y + S.h / 2));
+            if (d < S.w * 1.1) { if (ready('prox')) { arm('prox', rand(4500, 8000)); if (chance(.55)) setState('ROAM', { flee: true }); else setState('CURIOUS', {}); } }
+            else if (d < 420 && P.sp > 200 && P.sp < 1500 && (B.name === 'IDLE' || B.name === 'OBSERVE') && S.typing < t && !S.reading && ready('app') && chance(.1)) { arm('app', 12000); setState('FOLLOW_POINTER', {}); }
+          }
+          if (t >= B.until && B.name !== 'SLEEP') next();
+          if (t - S.lastUnob > 7000 && (B.name === 'IDLE' || B.name === 'OBSERVE')) { S.lastUnob = t; unobstruct(); }
+        } catch (e) {}
+        S.tk = setTimeout(tick, 250);
+      }
+      var blT = 0;
+      function blinkLoop() {
+        clearTimeout(blT);
+        blT = setTimeout(function () {
+          if (!S.paused && !RM && B.name !== 'SLEEP') {
+            setCls('blink', true); setTimeout(function () { setCls('blink', false); }, B.name === 'REST' ? 220 : 120);
+            if (chance(.18)) setTimeout(function () { setCls('blink', true); setTimeout(function () { setCls('blink', false); }, 110); }, 230);
+          }
+          if (!S.paused) blinkLoop();
+        }, rand(2200, 6800));
+      }
+
+      /* ───────────── start ───────────── */
+      function start() {
+        setRM(RM); measure(); domInit();
+        on(W, 'load', function () { domScan(); });
+        var saved = null;
+        try { saved = JSON.parse(sessionStorage.getItem('lrb') || 'null'); } catch (e) {}
+        var b = bounds(false);
+        if (saved && Date.now() - saved.t < 45000) {
+          S.x = clamp(saved.x * S.vw, b.x0, b.x1); S.y = clamp(saved.y * S.vh, b.y0, b.y1); S.greeted = true; write();
+          rb.classList.add('on'); setState('OBSERVE', {}); speak('nav', .5);
+        } else if (RM) {
+          var s0 = pickSpot('rest'); S.x = s0.x; S.y = s0.y; write(); rb.classList.add('on'); S.greeted = true; setState('IDLE', {}); setTimeout(safe(function () { speak('greet', 1, true); }), 1200);
+        } else {
+          S.x = S.vw + S.w; S.y = clamp(S.vh * .62, b.y0, b.y1); S.allowOff = true; write(); rb.classList.add('on');
+          setTimeout(safe(function () { setState('RETURN', { first: true, to: pickSpot('roam') }); }), 700);
+        }
+        B.since = now(); tick(); blinkLoop();
+      }
+      W.__LRB__ = { destroy: function () { OFF.forEach(function (f) { try { f(); } catch (e) {} }); clearTimeout(S.tk); clearTimeout(blT); if (S.raf) cancelAnimationFrame(S.raf); if (Dom.io) Dom.io.disconnect(); if (Dom.mo) Dom.mo.disconnect(); host.remove(); delete W.__LRB__; } };
+      setTimeout(safe(start), 400);
+    }
+  } catch (e) { /* fail silently */ }
+})();
+</script>
