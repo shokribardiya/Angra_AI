@@ -1516,3 +1516,30 @@ BOOT.init();[MED,NAV,SCR,HERO,GRAPH,LOOPM,ARCHM,UI,HT,ART,SYS,CUR,DL].forEach(ru
 <div class="site">Angra AI<small>https://shokribardiya.github.io/Angra_AI/</small></div></div>
 <h3>Angra AI</h3><p>This is how your logo appears in the Google results window — circular, glass, in the theme colour.</p></div>
 </body></html>
+<curl http://localhost:1234/api/v1/chat \
+  -H "Authorization: Bearer $LM_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "ibm/granite-4-micro",
+    "input": "Tell me the top trending model on hugging face and navigate to https://lmstudio.ai",
+    "integrations": [
+      {
+        "type": "ephemeral_mcp",
+        "server_label": "huggingface",
+        "server_url": "https://huggingface.co/mcp",
+        "allowed_tools": [
+          "model_search"
+        ]
+      },
+      {
+        "type": "plugin",
+        "id": "mcp/playwright",
+        "allowed_tools": [
+          "browser_navigate"
+        ]
+      }
+    ],
+    "context_length": 8000,
+    "temperature": 0
+  }'>
+
